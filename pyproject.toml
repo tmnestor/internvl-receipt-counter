@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "internvl2-receipt-counter"
+version = "0.1.0"
+description = "Receipt counting using InternVL2-5-1B"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "InternVL Team"},
+]
+dependencies = [
+    # Core dependencies
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "transformers>=4.37.2",
+    "accelerate>=0.20.0",
+    "bitsandbytes>=0.41.0",  # Only if using 8-bit quantization
+    
+    # Transformers requirements
+    "sentencepiece",
+    "protobuf",
+    
+    # Data handling and visualization
+    "pillow>=10.0.0",        # Preferred over OpenCV
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "matplotlib>=3.7.0",
+    
+    # Utilities
+    "pyyaml>=6.0",           # Simple configuration
+    "scikit-learn>=1.2.0",   # For metrics
+    "tqdm>=4.65.0",          # Progress bars
+    "tensorboard>=2.13.0",   # Optional for logging
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.3.1",
+    "black>=23.3.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.3.0",
+    "pre-commit>=3.3.2",
+]
+
+[tool.setuptools]
+packages = ["internvl2_receipt_counter"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true

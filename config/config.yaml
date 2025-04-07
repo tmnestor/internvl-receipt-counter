@@ -1,0 +1,75 @@
+# Base configuration
+seed: 42
+deterministic: true
+debug: false
+log_level: info
+
+# Data configuration
+data:
+  image_size: 448  # Required for InternVL2
+  batch_size: 4
+  num_workers: 8
+  augmentation: true
+  class_distribution: [0.3, 0.3, 0.4]  # Distribution for 0, 1, 2+ receipts
+  train_csv: data/train.csv
+  train_dir: data/train
+  val_csv: data/val.csv
+  val_dir: data/val
+  test_csv: data/test.csv
+  test_dir: data/test
+
+# Model configuration
+model:
+  name: "internvl2"
+  # Absolute path to the pre-downloaded model
+  pretrained_path: "/path/to/pretrained/InternVL2_5-1B"  # IMPORTANT: Change to actual path
+  use_8bit: true  # Use 8-bit quantization for memory efficiency
+  classifier:
+    hidden_dims: [1536, 768, 256]
+    dropout_rates: [0.4, 0.3, 0.2]
+    batch_norm: true
+    activation: "gelu"
+  num_classes: 3  # 0, 1, or 2+ receipts
+
+# Training configuration
+training:
+  epochs: 20
+  early_stopping:
+    patience: 5
+    min_delta: 0.001
+  optimizer:
+    name: "adamw"
+    learning_rate: 5e-5
+    backbone_lr_multiplier: 0.1
+    weight_decay: 0.01
+    gradient_clip: 1.0
+  scheduler:
+    name: "cosine"
+    warmup_epochs: 3
+    min_lr_factor: 0.01
+  loss:
+    name: "cross_entropy"
+    label_smoothing: 0.1
+  mixed_precision: true
+  three_stage:
+    enabled: true
+    mlp_warmup_epochs: 5
+    vision_tuning_epochs: 5
+
+# Evaluation configuration
+evaluation:
+  metrics: ["accuracy", "balanced_accuracy", "f1_score", "precision", "recall"]
+  confusion_matrix: true
+  class_report: true
+  visualization: true
+  calibration: true
+  samples_to_visualize: 20
+
+# Output configuration
+output:
+  model_dir: "saved_models"
+  log_dir: "logs"
+  results_dir: "results"
+  tensorboard: true
+  checkpoint_frequency: 1
+  save_best_only: true
