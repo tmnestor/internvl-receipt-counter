@@ -44,11 +44,18 @@ def generate_dataset(args):
     
     # 2. Create the synthetic receipts
     synthetic_dir = output_dir / "synthetic_receipts"
+    # Save current directory
+    import os
+    current_dir = os.getcwd()
+    
+    # Change to the script directory
+    os.chdir(Path.cwd() / "data" / "data_generators")
+    
     cmd = [
-        "python", "data/data_generators/create_synthetic_receipts.py",
+        "python", "create_synthetic_receipts.py",
         "--num_collages", str(args.num_collages),
         "--count_probs", args.count_probs,
-        "--output_dir", str(synthetic_dir),
+        "--output_dir", str(synthetic_dir.resolve()),
         "--image_size", str(args.image_size),
         "--stapled_ratio", str(args.stapled_ratio),
         "--seed", str(args.seed)
@@ -59,9 +66,9 @@ def generate_dataset(args):
     # 3. Create the dataset from synthetic collages
     dataset_dir = output_dir / "receipt_dataset"
     cmd = [
-        "python", "data/data_generators/create_collage_dataset.py",
-        "--collage_dir", str(synthetic_dir),
-        "--output_dir", str(dataset_dir),
+        "python", "create_collage_dataset.py",
+        "--collage_dir", str(synthetic_dir.resolve()),
+        "--output_dir", str(dataset_dir.resolve()),
         "--image_size", str(args.image_size),
         "--train_ratio", str(args.train_ratio),
         "--val_ratio", str(args.val_ratio),
@@ -70,6 +77,8 @@ def generate_dataset(args):
     ]
     print(f"Running: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
+    # Change back to original directory
+    os.chdir(current_dir)
     
     print(f"Dataset generation complete! Created images at {args.image_size}×{args.image_size} resolution")
     print(f"Dataset splits saved to {dataset_dir}")

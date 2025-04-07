@@ -37,8 +37,9 @@ pip install -e .
 Generate synthetic receipt training data:
 
 ```bash
-# Using the script directly
-python data/data_generators/create_synthetic_receipts.py --output_dir datasets/synthetic_receipts --num_collages 1000 --count_probs "0.3,0.3,0.2,0.1,0.1" --stapled_ratio 0.3
+# Using the script directly (navigate to the script directory first)
+cd data/data_generators/
+python create_synthetic_receipts.py --output_dir ../../datasets/synthetic_receipts --num_collages 1000 --count_probs "0.3,0.3,0.2,0.1,0.1" --stapled_ratio 0.3
 
 # Or using the convenience script (which also creates train/val/test splits)
 python scripts/generate_data.py --output_dir datasets --num_collages 1000 --count_probs "0.3,0.3,0.2,0.1,0.1" --stapled_ratio 0.3

@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from data.data_generators.receipt_processor import create_blank_image
+from receipt_processor import create_blank_image
 
 
 def create_receipt_image(width=1000, height=2000, items_count=None, max_items=20):
