@@ -110,13 +110,14 @@ def create_receipt_image(width=1000, height=2000, items_count=None, max_items=20
     return receipt
 
 
-def create_receipt_collage(receipt_count, image_size=448):
+def create_receipt_collage(receipt_count, image_size=448, stapled=False):
     """
     Create a collage with a specified number of receipts.
     
     Args:
         receipt_count: Number of receipts to include (0-5)
         image_size: Size of the output collage image
+        stapled: Whether to create a stapled stack of receipts
         
     Returns:
         PIL Image containing the receipt collage
@@ -154,23 +155,61 @@ def create_receipt_collage(receipt_count, image_size=448):
         
         receipts.append(receipt)
     
-    # Place receipts in collage
-    for idx, receipt in enumerate(receipts):
-        if receipt_count == 1:
-            # Center the receipt
-            x_pos = (image_size - receipt.width) // 2
-            y_pos = (image_size - receipt.height) // 2
-        else:
-            # Distribute receipts across the image
-            if idx % 2 == 0:  # Left side
-                x_pos = random.randint(10, image_size // 2 - receipt.width - 10)
-            else:  # Right side
-                x_pos = random.randint(image_size // 2 + 10, image_size - receipt.width - 10)
-                
-            y_pos = random.randint(10, image_size - receipt.height - 10)
+    # For stapled receipts, create a stack with slight offsets
+    if stapled and receipt_count > 1:
+        # Find the largest receipt to determine overall dimensions
+        max_width = max(r.width for r in receipts)
+        max_height = max(r.height for r in receipts)
         
-        # Paste the receipt onto the collage
-        collage.paste(receipt, (x_pos, y_pos))
+        # Center position for the stack
+        center_x = (image_size - max_width) // 2
+        center_y = (image_size - max_height) // 2
+        
+        # Place receipts with small offsets
+        for idx, receipt in enumerate(receipts):
+            # Calculate offset for this receipt in the stack
+            offset_x = random.randint(-10, 10)
+            offset_y = random.randint(-10, 10)
+            
+            # Ensure the receipt stays within bounds
+            x_pos = max(10, min(center_x + offset_x, image_size - receipt.width - 10))
+            y_pos = max(10, min(center_y + offset_y, image_size - receipt.height - 10))
+            
+            # Paste the receipt onto the collage
+            collage.paste(receipt, (x_pos, y_pos))
+            
+        # Add a "staple" mark at the top or side
+        draw = ImageDraw.Draw(collage)
+        if random.random() > 0.5:  # Top staple
+            staple_x = center_x + max_width // 2
+            staple_y = center_y - 5
+            draw.line([(staple_x-5, staple_y), (staple_x+5, staple_y)], fill="black", width=2)
+            draw.line([(staple_x-3, staple_y-3), (staple_x-3, staple_y+3)], fill="black", width=2)
+            draw.line([(staple_x+3, staple_y-3), (staple_x+3, staple_y+3)], fill="black", width=2)
+        else:  # Side staple
+            staple_x = center_x - 5
+            staple_y = center_y + max_height // 2
+            draw.line([(staple_x, staple_y-5), (staple_x, staple_y+5)], fill="black", width=2)
+            draw.line([(staple_x-3, staple_y-3), (staple_x+3, staple_y-3)], fill="black", width=2)
+            draw.line([(staple_x-3, staple_y+3), (staple_x+3, staple_y+3)], fill="black", width=2)
+    else:
+        # Place receipts in collage (distributed across the image)
+        for idx, receipt in enumerate(receipts):
+            if receipt_count == 1:
+                # Center the receipt
+                x_pos = (image_size - receipt.width) // 2
+                y_pos = (image_size - receipt.height) // 2
+            else:
+                # Distribute receipts across the image
+                if idx % 2 == 0:  # Left side
+                    x_pos = random.randint(10, image_size // 2 - receipt.width - 10)
+                else:  # Right side
+                    x_pos = random.randint(image_size // 2 + 10, image_size - receipt.width - 10)
+                    
+                y_pos = random.randint(10, image_size - receipt.height - 10)
+            
+            # Paste the receipt onto the collage
+            collage.paste(receipt, (x_pos, y_pos))
     
     # Apply final touch-ups
     if random.random() > 0.7:
@@ -180,7 +219,7 @@ def create_receipt_collage(receipt_count, image_size=448):
     return collage
 
 
-def generate_dataset(output_dir, num_collages=300, count_probs=None, image_size=448):
+def generate_dataset(output_dir, num_collages=300, count_probs=None, image_size=448, stapled_ratio=0.0):
     """
     Generate a dataset of receipt collages with varying receipt counts.
     
@@ -189,6 +228,7 @@ def generate_dataset(output_dir, num_collages=300, count_probs=None, image_size=
         num_collages: Number of collage images to generate
         count_probs: Probability distribution for number of receipts (0-5)
         image_size: Size of output images
+        stapled_ratio: Ratio of images that should have stapled receipts (0.0-1.0)
         
     Returns:
         DataFrame with image filenames and receipt counts
@@ -215,8 +255,14 @@ def generate_dataset(output_dir, num_collages=300, count_probs=None, image_size=
         # Determine number of receipts based on probability distribution
         receipt_count = np.random.choice(len(count_probs), p=count_probs)
         
+        # Determine if this should be a stapled collage
+        # Only makes sense for multiple receipts
+        is_stapled = False
+        if receipt_count > 1 and random.random() < stapled_ratio:
+            is_stapled = True
+        
         # Create collage
-        collage = create_receipt_collage(receipt_count, image_size)
+        collage = create_receipt_collage(receipt_count, image_size, stapled=is_stapled)
         
         # Save image
         filename = f"receipt_collage_{i:05d}.png"
@@ -225,7 +271,8 @@ def generate_dataset(output_dir, num_collages=300, count_probs=None, image_size=
         # Add to dataset
         data.append({
             "filename": filename,
-            "receipt_count": receipt_count
+            "receipt_count": receipt_count,
+            "is_stapled": is_stapled
         })
         
         # Progress update
@@ -236,8 +283,12 @@ def generate_dataset(output_dir, num_collages=300, count_probs=None, image_size=
     df = pd.DataFrame(data)
     df.to_csv(output_dir / "metadata.csv", index=False)
     
+    # Print some stats
     print(f"Dataset generation complete: {num_collages} images")
     print(f"Distribution of receipt counts: {df['receipt_count'].value_counts().sort_index()}")
+    if stapled_ratio > 0:
+        stapled_count = df['is_stapled'].sum()
+        print(f"Stapled receipts: {stapled_count} ({stapled_count/num_collages:.1%})")
     
     return df
 
@@ -252,6 +303,8 @@ def parse_args():
     parser.add_argument("--image_size", type=int, default=448,
                       help="Size of output images (default: 448 for InternVL2)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--stapled_ratio", type=float, default=0.0, 
+                      help="Ratio of images that should have stapled receipts (0.0-1.0)")
     return parser.parse_args()
 
 
@@ -270,5 +323,6 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         num_collages=args.num_collages,
         count_probs=count_probs,
-        image_size=args.image_size
+        image_size=args.image_size,
+        stapled_ratio=args.stapled_ratio
     )

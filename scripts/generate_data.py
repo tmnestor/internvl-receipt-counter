@@ -20,6 +20,8 @@ def parse_args():
     parser.add_argument("--num_collages", type=int, default=300, help="Number of collages to generate")
     parser.add_argument("--count_probs", default="0.3,0.3,0.2,0.1,0.1,0", 
                       help="Probability distribution for receipt counts")
+    parser.add_argument("--stapled_ratio", type=float, default=0.3,
+                      help="Ratio of images that should have stapled receipts (0.0-1.0)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     parser.add_argument("--image_size", type=int, default=448, 
                       help="Output image size (default: 448 for InternVL2)")
@@ -48,6 +50,7 @@ def generate_dataset(args):
         "--count_probs", args.count_probs,
         "--output_dir", str(synthetic_dir),
         "--image_size", str(args.image_size),
+        "--stapled_ratio", str(args.stapled_ratio),
         "--seed", str(args.seed)
     ]
     print(f"Running: {' '.join(cmd)}")

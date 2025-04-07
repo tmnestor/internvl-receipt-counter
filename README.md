@@ -24,7 +24,7 @@ The model leverages the powerful vision capabilities of InternVL with a 448×448
 ```bash
 # Clone the repository
 git clone https://github.com/tmnestor/internvl-receipt-counter.git
-cd InternVL-receipt-counter
+cd internvl-receipt-counter
 
 # Install dependencies
 pip install -e .
@@ -37,7 +37,11 @@ pip install -e .
 Generate synthetic receipt training data:
 
 ```bash
-python scripts/generate_data.py --output_dir datasets --num_collages 300
+# Using the script directly
+python data/data_generators/create_synthetic_receipts.py --output_dir datasets/synthetic_receipts --num_collages 1000 --count_probs "0.3,0.3,0.2,0.1,0.1" --stapled_ratio 0.3
+
+# Or using the convenience script (which also creates train/val/test splits)
+python scripts/generate_data.py --output_dir datasets --num_collages 1000 --count_probs "0.3,0.3,0.2,0.1,0.1" --stapled_ratio 0.3
 ```
 
 ### Training
@@ -96,16 +100,23 @@ The project uses a YAML-based configuration system. The main configuration file 
 ## Project Structure
 
 ```
-InternVL-receipt-counter/
+internvl-receipt-counter/
 ├── config/              # Configuration files
 ├── data/                # Dataset implementation
 │   └── data_generators/ # Synthetic data generation
+│       ├── create_synthetic_receipts.py  # Generate synthetic receipt images
+│       ├── create_receipt_collages.py    # Create collages from receipts
+│       ├── create_collage_dataset.py     # Create train/val/test splits
+│       └── receipt_processor.py          # Receipt image processing utilities
 ├── models/              # Model implementation
 │   └── components/      # Model components
 ├── training/            # Training functionality
 ├── evaluation/          # Evaluation metrics and visualization
 ├── utils/               # Utility functions
 └── scripts/             # Training and utility scripts
+    ├── generate_data.py # Convenience script to generate data
+    ├── train.py         # Training script
+    └── evaluate.py      # Evaluation script
 ```
 
 ## License
