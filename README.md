@@ -21,6 +21,8 @@ The model leverages the powerful vision capabilities of InternVL with a 448×448
 
 ## Installation
 
+### Method 1: Using pip (Simple data generation only)
+
 ```bash
 # Clone the repository
 git clone https://github.com/tmnestor/internvl-receipt-counter.git
@@ -33,6 +35,54 @@ source venv_py311/bin/activate  # On Windows: venv_py311\Scripts\activate
 # Install minimal dependencies (just for data generation)
 pip install numpy pandas pillow matplotlib tqdm
 ```
+
+### Method 2: Using conda (Full installation)
+
+This method is recommended, especially on macOS where building `sentencepiece` can be problematic:
+
+```bash
+# Clone the repository
+git clone https://github.com/tmnestor/internvl-receipt-counter.git
+cd internvl-receipt-counter
+
+# Create conda environment directly (safest method)
+conda create -n internvl-env python=3.11 numpy pandas pillow matplotlib tqdm pytorch torchvision sentencepiece -c conda-forge -c pytorch
+
+# Activate the environment
+conda activate internvl-env
+```
+
+Alternatively, you can use the environment.yml file:
+
+```bash
+# Create and activate conda environment from file
+conda env create -f environment.yml
+conda activate internvl-env
+```
+
+If you encounter a "prefix already exists" error, use:
+
+```bash
+# Remove existing environment
+conda env remove -n internvl-env
+
+# Create the environment again
+conda env create -f environment.yml
+```
+
+### Troubleshooting macOS Build Issues
+
+If you're experiencing issues with `sentencepiece` installation on macOS:
+
+1. Install the conda version (recommended):
+   ```bash
+   conda install -c conda-forge sentencepiece
+   ```
+
+2. Or, try installing with Homebrew:
+   ```bash
+   brew install sentencepiece
+   ```
 
 ## Usage
 

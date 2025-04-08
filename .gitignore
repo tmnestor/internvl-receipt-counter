@@ -12,6 +12,7 @@
 !*.py
 !*.md
 !*.txt
+!*.yml
 
 # Ignore specific markdown files
 CLAUDE.md

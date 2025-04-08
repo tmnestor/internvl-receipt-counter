@@ -1,0 +1,15 @@
+name: internvl-env
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - pandas
+  - pillow
+  - matplotlib
+  - tqdm
+  - pytorch
+  - torchvision
+  - sentencepiece

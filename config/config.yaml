@@ -22,7 +22,7 @@ data:
 model:
   name: "internvl2"
   # Absolute path to the pre-downloaded model
-  pretrained_path: "/path/to/pretrained/InternVL2_5-1B"  # IMPORTANT: Change to actual path
+  pretrained_path: "/Users/tod/PretrainedLLM/local_internvl_model"  # IMPORTANT: Change to actual path
   use_8bit: true  # Use 8-bit quantization for memory efficiency
   classifier:
     hidden_dims: [1536, 768, 256]
