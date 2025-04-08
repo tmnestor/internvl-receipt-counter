@@ -1,15 +1,43 @@
-name: internvl-env
+name: internvl_env
 channels:
-  - conda-forge
   - pytorch
+  - conda-forge
+  - defaults
+  # - nvidia  # Uncomment when using GPU
 dependencies:
   - python=3.11
-  - pip
   - numpy
   - pandas
   - pillow
   - matplotlib
   - tqdm
-  - pytorch
-  - torchvision
+  # CPU configuration (default for cost-effective cloud testing)
+  - pytorch>=2.0.0=cpu
+  - torchvision=cpu
+  
+  # GPU support (uncomment when moving to GPU instance)
+  # - pytorch>=2.0.0
+  # - torchvision
+  # - pytorch-cuda=11.8  # Update to match your cloud GPU CUDA version
+  # Required packages
   - sentencepiece
+  - pyyaml
+  - transformers>=4.37.0
+  - einops
+  - pip
+  - pip:
+    - accelerate>=0.26.0
+    - bitsandbytes  # For quantization
+    - timm>=1.0.0
+    - tensorboard  # For logging
+
+# Usage Instructions:
+# -----------------
+# Create environment: conda env create -f environment.yml
+# Update environment: conda env update -f environment.yml --prune
+# Activate environment: conda activate internvl_env
+# Remove environment: conda env remove -n internvl_env
+#
+# Note: Currently configured for CPU-only cloud instance for cost-effective testing
+# Note: To enable GPU support, uncomment the nvidia channel and GPU packages
+# Note: For GPU cloud systems, ensure pytorch-cuda version matches your system's CUDA

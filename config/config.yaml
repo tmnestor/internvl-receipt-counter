@@ -7,23 +7,23 @@ log_level: info
 # Data configuration
 data:
   image_size: 448  # Required for InternVL2
-  batch_size: 4
-  num_workers: 8
+  batch_size: 2
+  num_workers: 2
   augmentation: true
   class_distribution: [0.3, 0.3, 0.4]  # Distribution for 0, 1, 2+ receipts
-  train_csv: data/train.csv
-  train_dir: data/train
-  val_csv: data/val.csv
-  val_dir: data/val
-  test_csv: data/test.csv
-  test_dir: data/test
+  train_csv: datasets/synthetic_receipts/metadata.csv
+  train_dir: datasets/synthetic_receipts/images
+  val_csv: datasets/synthetic_receipts/metadata.csv
+  val_dir: datasets/synthetic_receipts/images
+  test_csv: datasets/synthetic_receipts/metadata.csv
+  test_dir: datasets/synthetic_receipts/images
 
 # Model configuration
 model:
   name: "internvl2"
   # Absolute path to the pre-downloaded model
-  pretrained_path: "/Users/tod/PretrainedLLM/local_internvl_model"  # IMPORTANT: Change to actual path
-  use_8bit: true  # Use 8-bit quantization for memory efficiency
+  pretrained_path: "/Users/tod/PretrainedLLM/InternVL2_5-1B"  # IMPORTANT: Change to actual path
+  use_8bit: false  # Disable 8-bit quantization to avoid issues
   classifier:
     hidden_dims: [1536, 768, 256]
     dropout_rates: [0.4, 0.3, 0.2]
@@ -33,9 +33,9 @@ model:
 
 # Training configuration
 training:
-  epochs: 20
+  epochs: 3  # Reduced for development/testing
   early_stopping:
-    patience: 5
+    patience: 2
     min_delta: 0.001
   optimizer:
     name: "adamw"

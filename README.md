@@ -46,10 +46,10 @@ git clone https://github.com/tmnestor/internvl-receipt-counter.git
 cd internvl-receipt-counter
 
 # Create conda environment directly (safest method)
-conda create -n internvl-env python=3.11 numpy pandas pillow matplotlib tqdm pytorch torchvision sentencepiece -c conda-forge -c pytorch
+conda create -n internvl_env python=3.11 numpy pandas pillow matplotlib tqdm pytorch torchvision sentencepiece einops -c conda-forge -c pytorch
 
 # Activate the environment
-conda activate internvl-env
+conda activate internvl_env
 ```
 
 Alternatively, you can use the environment.yml file:
@@ -57,14 +57,14 @@ Alternatively, you can use the environment.yml file:
 ```bash
 # Create and activate conda environment from file
 conda env create -f environment.yml
-conda activate internvl-env
+conda activate internvl_env
 ```
 
 If you encounter a "prefix already exists" error, use:
 
 ```bash
 # Remove existing environment
-conda env remove -n internvl-env
+conda env remove -n internvl_env
 
 # Create the environment again
 conda env create -f environment.yml
@@ -199,3 +199,4 @@ MIT
 This project uses the InternVL architecture from:
 
 "InternVL: Scaling up Vision Foundation Models and Aligning for Generic Visual-Linguistic Tasks"
+

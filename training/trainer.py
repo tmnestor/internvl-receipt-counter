@@ -112,8 +112,14 @@ class InternVL2Trainer:
         """Create the optimizer based on configuration."""
         optimizer_config = self.config["training"]["optimizer"]
         optimizer_name = optimizer_config["name"]
-        lr = optimizer_config["learning_rate"]
-        weight_decay = optimizer_config.get("weight_decay", 0.01)
+        
+        # Ensure learning rate is a float
+        lr_value = optimizer_config["learning_rate"]
+        lr = float(lr_value) if isinstance(lr_value, str) else lr_value
+        
+        # Ensure weight decay is a float
+        wd_value = optimizer_config.get("weight_decay", 0.01)
+        weight_decay = float(wd_value) if isinstance(wd_value, str) else wd_value
         
         # Use provided param groups or model parameters
         params = param_groups if param_groups else self.model.parameters()
@@ -137,10 +143,13 @@ class InternVL2Trainer:
         scheduler_config = self.config["training"]["scheduler"]
         scheduler_name = scheduler_config["name"]
         
+        # Get epochs from config directly to avoid any timing issues with attribute setting
+        epochs = self.config["training"]["epochs"]
+        
         if scheduler_name == "cosine":
             return optim.lr_scheduler.CosineAnnealingLR(
                 self.optimizer,
-                T_max=self.epochs,
+                T_max=epochs,
                 eta_min=self.optimizer.param_groups[0]["lr"] * scheduler_config["min_lr_factor"]
             )
         elif scheduler_name == "one_cycle":
@@ -149,7 +158,7 @@ class InternVL2Trainer:
                 self.optimizer,
                 max_lr=self.optimizer.param_groups[0]["lr"],
                 steps_per_epoch=steps_per_epoch,
-                epochs=self.epochs
+                epochs=epochs
             )
         elif scheduler_name == "step":
             return optim.lr_scheduler.StepLR(
