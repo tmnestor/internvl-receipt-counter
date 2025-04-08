@@ -26,21 +26,44 @@ The model leverages the powerful vision capabilities of InternVL with a 448×448
 git clone https://github.com/tmnestor/internvl-receipt-counter.git
 cd internvl-receipt-counter
 
-# Install dependencies
-pip install numpy pandas pillow torch torchvision
+# Create and activate a virtual environment
+python -m venv venv_py311
+source venv_py311/bin/activate  # On Windows: venv_py311\Scripts\activate
+
+# Install minimal dependencies (just for data generation)
+pip install numpy pandas pillow matplotlib tqdm
 ```
 
 ## Usage
 
 ### Data Generation
 
-Generate synthetic receipt training data:
+Generate high-resolution synthetic receipt training data (which will later be resized to 448x448 by the DataLoader):
 
 ```bash
-# Direct approach with Python (no module dependencies)
+# Generate 1000 high-resolution synthetic receipt images (2048x2048)
 cd internvl-receipt-counter
-python scripts/generate_data.py --output_dir datasets --num_collages 1000 --count_probs "0.3,0.3,0.2,0.1,0.1" --stapled_ratio 0.3
+python scripts/generate_data.py --output_dir datasets --num_collages 1000 --count_probs "0.3,0.3,0.2,0.1,0.1" --stapled_ratio 0.3 --image_size 2048
 ```
+
+The images will be generated at high resolution (2048x2048) to simulate photos taken with a mobile phone camera. During training, the PyTorch DataLoader will automatically resize these images to 448x448 as required by the InternVL2 model.
+
+#### About the Generated Data
+
+The dataset includes different categories of images:
+
+- **0 receipts**: Australian Taxation Office (ATO) documents rather than blank backgrounds
+- **1 receipt**: A single receipt centered in the image
+- **2+ receipts**: Multiple receipts arranged in the image
+- **Stapled receipts**: For multi-receipt images, some may have stapled receipts (controlled by `stapled_ratio`)
+
+The synthetic receipts simulate real-world receipt variations with:
+- Different store names and layouts
+- Varying items and prices
+- Different receipt formats (standard, detailed, minimal, fancy)
+- Natural variations like slight rotation, creases, and blur
+
+You can control the distribution of receipt counts with the `count_probs` parameter, which accepts a comma-separated list of probabilities for 0, 1, 2, 3, 4, and 5 receipts.
 
 ### Training
 
