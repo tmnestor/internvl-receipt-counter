@@ -48,7 +48,7 @@ cd internvl-receipt-counter
 # Create conda environment directly (safest method)
 conda create -n internvl_env python=3.11 numpy pandas pillow matplotlib tqdm pytorch torchvision sentencepiece einops -c conda-forge -c pytorch
 
-# Activate the environment
+# Activate the environment (standard method)
 conda activate internvl_env
 ```
 
@@ -57,6 +57,16 @@ Alternatively, you can use the environment.yml file:
 ```bash
 # Create and activate conda environment from file
 conda env create -f environment.yml
+conda activate internvl_env
+```
+
+#### Activating in shared environments (Jupyter, cloud platforms)
+
+In shared environments where you don't have admin access or want to avoid modifying `.bashrc`:
+
+```bash
+# Initialize conda without modifying .bashrc (recommended for shared systems)
+source /opt/conda/etc/profile.d/conda.sh
 conda activate internvl_env
 ```
 
@@ -158,6 +168,17 @@ Before running the application:
    ```
 
 **Note**: This application is designed to work in offline environments. The model must be pre-downloaded before running the application.
+
+3. To pre-download the InternVL2 model using the provided utility script:
+   ```bash
+   # Download the model to a specific directory
+   python utils/huggingface_model_download.py --model_name OpenGVLab/InternVL2_5-1B --output_dir /path/to/save/model
+   
+   # Example:
+   python utils/huggingface_model_download.py --model_name OpenGVLab/InternVL2_5-1B --output_dir ~/models/InternVL2_5-1B
+   ```
+   
+   After downloading, update the `pretrained_path` in your config.yaml to point to this location.
 
 ## Configuration
 
