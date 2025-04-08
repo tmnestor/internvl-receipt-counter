@@ -10,7 +10,7 @@ import random
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 from data.data_generators.receipt_processor import create_blank_image
 
@@ -34,19 +34,21 @@ def create_receipt_image(width=2000, height=3000, items_count=None, max_items=20
     
     # Try to load fonts with increased sizes for higher resolution
     try:
-        font_header = ImageFont.truetype("Arial", 60)
+        # Try to use system fonts at large sizes for high-quality receipts
+        font_header = ImageFont.truetype("Arial Bold", 60)
         font_body = ImageFont.truetype("Arial", 40)
         font_small = ImageFont.truetype("Arial", 30)
     except IOError:
+        # If specific fonts not available, try generic fonts
         try:
-            # Fall back to default font but try to get larger sizes
+            font_header = ImageFont.truetype("DejaVuSans-Bold", 60)
+            font_body = ImageFont.truetype("DejaVuSans", 40)
+            font_small = ImageFont.truetype("DejaVuSans", 30)
+        except IOError:
+            # Fall back to default font if needed
             font_header = ImageFont.load_default()
             font_body = ImageFont.load_default()
             font_small = ImageFont.load_default()
-        except:
-            font_header = None
-            font_body = None
-            font_small = None
             
     # Generate more realistic receipt content
     receipt_types = ["standard", "detailed", "minimal", "fancy"]
@@ -96,22 +98,68 @@ def create_receipt_image(width=2000, height=3000, items_count=None, max_items=20
     receipt_id = f"#{random.randint(100000, 999999)}"
     
     # Different receipt layouts based on type
+    # Fill in these variables in advance for use in multiple receipt types
+    # Generate store address (used in multiple receipt types)
+    street_num = random.randint(100, 9999)
+    streets = ["Main St", "Oak Avenue", "Park Road", "Market Street", "Broadway", "First Avenue"]
+    street = random.choice(streets)
+    cities = ["Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide", "Canberra", "Hobart"]
+    city = random.choice(cities)
+    states = ["NSW", "VIC", "QLD", "WA", "SA", "ACT", "TAS", "NT"]
+    state = random.choice(states)
+    post_code = random.randint(1000, 9999)
+    store_address = f"{street_num} {street}, {city}, {state} {post_code}"
+    
+    # Phone number (Australian format)
+    area_code = random.randint(2, 9)
+    phone_prefix = random.randint(1000, 9999)
+    phone_suffix = random.randint(1000, 9999)
+    phone = f"(0{area_code}) {phone_prefix} {phone_suffix}"
+    
+    # Date and time more visible formats
+    hour = random.randint(8, 21)
+    minute = random.randint(0, 59)
+    am_pm = "AM" if hour < 12 else "PM"
+    time_str_display = f"{hour}:{minute:02d} {am_pm}"
+    
+    day = random.randint(1, 28)
+    month = random.randint(1, 12)
+    year = random.randint(2020, 2023)
+    date_str_display = f"{day}/{month}/{year}"
+    
+    # Payment methods - select one for this receipt
+    payment_methods = ["VISA", "MASTERCARD", "AMEX", "CASH", "DEBIT"]
+    payment = random.choice(payment_methods)
+    
+    # Card number (partially masked) if it's a card payment
+    if payment != "CASH":
+        card_num = "XXXX-XXXX-XXXX-" + str(random.randint(1000, 9999))
+    else:
+        card_num = ""
+    
+    # Auth code for card transactions
+    auth_code = f"{random.randint(100000, 999999)}"
+    
     if receipt_type == "standard":
         # Standard receipt layout
         draw.text((width // 2 - 200, 80), store_name, fill="black", font=font_header)
         draw.text((width // 2 - 120, 160), "RECEIPT", fill="black", font=font_header)
         
+        # Use the pre-generated store address
+        
+        # Add address centered
+        address_x = max(50, width // 2 - len(store_address) * 8)
+        draw.text((address_x, 200), store_address, fill="black", font=font_small)
+        
         # Draw divider
         draw.line([(100, 240), (width - 100, 240)], fill="black", width=3)
         
         # Add date and time
-        draw.text((150, 280), f"DATE: {date_str}", fill="black", font=font_body)
-        draw.text((150, 340), f"TIME: {time_str}", fill="black", font=font_body)
+        draw.text((150, 280), f"DATE: {date_str_display}", fill="black", font=font_body)
+        draw.text((150, 340), f"TIME: {time_str_display}", fill="black", font=font_body)
         draw.text((width - 400, 280), f"TRANS ID: {receipt_id}", fill="black", font=font_body)
         
-        # Credit card type
-        payment_methods = ["VISA", "MASTERCARD", "AMEX", "CASH", "DEBIT"]
-        payment = random.choice(payment_methods)
+        # Payment method using the pre-generated value
         draw.text((width - 400, 340), f"PAYMENT: {payment}", fill="black", font=font_body)
         
         # Draw second divider
@@ -139,39 +187,41 @@ def create_receipt_image(width=2000, height=3000, items_count=None, max_items=20
         streets = ["Main St", "Oak Avenue", "Park Road", "Market Street", "Broadway", "First Avenue"]
         street_num = random.randint(100, 9999)
         street = random.choice(streets)
-        cities = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio"]
+        cities = ["Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide", "Canberra", "Hobart"] 
         city = random.choice(cities)
-        states = ["NY", "CA", "IL", "TX", "AZ", "PA", "FL", "OH", "GA", "NC"]
+        states = ["NSW", "VIC", "QLD", "WA", "SA", "ACT", "TAS", "NT"]
         state = random.choice(states)
-        zip_code = random.randint(10000, 99999)
+        post_code = random.randint(1000, 9999)
         
-        address = f"{street_num} {street}, {city}, {state} {zip_code}"
-        draw.text((width // 2 - len(address)*8, 220), address, fill="black", font=font_small)
+        address = f"{street_num} {street}, {city}, {state} {post_code}"
+        address_x = max(50, width // 2 - len(address) * 10)
+        draw.text((address_x, 220), address, fill="black", font=font_small)
         
         # Add phone number
-        area_code = random.randint(200, 999)
-        phone_prefix = random.randint(200, 999)
+        area_code = random.randint(2, 9)
+        phone_prefix = random.randint(1000, 9999)
         phone_suffix = random.randint(1000, 9999)
-        phone = f"({area_code}) {phone_prefix}-{phone_suffix}"
-        draw.text((width // 2 - len(phone)*8, 260), phone, fill="black", font=font_small)
+        phone = f"(0{area_code}) {phone_prefix} {phone_suffix}"
+        phone_x = max(50, width // 2 - len(phone) * 10)
+        draw.text((phone_x, 260), phone, fill="black", font=font_small)
         
         # Divider
         draw.line([(100, 320), (width - 100, 320)], fill="black", width=3)
         
         # Add date and transaction details in left column
-        draw.text((150, 360), f"DATE:", fill="black", font=font_body)
+        draw.text((150, 360), "DATE:", fill="black", font=font_body)
         draw.text((400, 360), f"{date_str}", fill="black", font=font_body)
         
-        draw.text((150, 420), f"TIME:", fill="black", font=font_body)
+        draw.text((150, 420), "TIME:", fill="black", font=font_body)
         draw.text((400, 420), f"{time_str}", fill="black", font=font_body)
         
-        draw.text((150, 480), f"TRANS ID:", fill="black", font=font_body)
+        draw.text((150, 480), "TRANS ID:", fill="black", font=font_body)
         draw.text((400, 480), f"{receipt_id}", fill="black", font=font_body)
         
         # Add payment method details
         payment_methods = ["VISA", "MASTERCARD", "AMEX", "CASH", "DEBIT"]
         payment = random.choice(payment_methods)
-        draw.text((150, 540), f"METHOD:", fill="black", font=font_body)
+        draw.text((150, 540), "METHOD:", fill="black", font=font_body)
         draw.text((400, 540), f"{payment}", fill="black", font=font_body)
         
         # Add card number (partially masked) if it's a card
@@ -252,22 +302,30 @@ def create_receipt_image(width=2000, height=3000, items_count=None, max_items=20
         box_bottom = 520
         draw.rectangle([(150, box_top), (width - 150, box_bottom)], outline="black", width=2)
         
-        # Add date and time in the box
-        draw.text((200, box_top + 30), f"DATE:", fill="black", font=font_body)
-        draw.text((500, box_top + 30), f"{date_str}", fill="black", font=font_body)
+        # Add date and time in the box with conspicuous display values
+        draw.text((200, box_top + 30), "DATE:", fill="black", font=font_body)
+        draw.text((500, box_top + 30), f"{date_str_display}", fill="black", font=font_body)
         
-        draw.text((200, box_top + 90), f"TIME:", fill="black", font=font_body)
-        draw.text((500, box_top + 90), f"{time_str}", fill="black", font=font_body)
+        draw.text((200, box_top + 90), "TIME:", fill="black", font=font_body)
+        draw.text((500, box_top + 90), f"{time_str_display}", fill="black", font=font_body)
         
-        # Add transaction ID
-        draw.text((width - 600, box_top + 30), f"RECEIPT #:", fill="black", font=font_body)
+        # Add transaction ID 
+        draw.text((width - 600, box_top + 30), "RECEIPT #:", fill="black", font=font_body)
         draw.text((width - 350, box_top + 30), f"{receipt_id}", fill="black", font=font_body)
         
-        # Payment method
-        payment_methods = ["VISA", "MASTERCARD", "AMEX", "CASH", "DEBIT"]
-        payment = random.choice(payment_methods)
-        draw.text((width - 600, box_top + 90), f"PAYMENT:", fill="black", font=font_body)
+        # Payment method - use pre-defined value
+        draw.text((width - 600, box_top + 90), "PAYMENT:", fill="black", font=font_body)
         draw.text((width - 350, box_top + 90), f"{payment}", fill="black", font=font_body)
+        
+        # Store address (add it to the fancy layout too)
+        draw.text((width // 2 - len(store_address)*7, 200), store_address, fill="black", font=font_small)
+        
+        # Add a few more transaction details
+        if payment != "CASH":
+            # Card number for card payments
+            card_number = "XXXX-XXXX-XXXX-" + str(random.randint(1000, 9999))
+            draw.text((width - 600, box_top + 150), "CARD:", fill="black", font=font_body)
+            draw.text((width - 350, box_top + 150), f"{card_number}", fill="black", font=font_body)
         
         # Start items list further down
         y_pos = 580
@@ -512,32 +570,9 @@ def create_receipt_image(width=2000, height=3000, items_count=None, max_items=20
             y = y_pos + i * 20
             draw.line([(100, y), (width - 100, y)], fill="black", width=1)
     
-    # Add some random noise to make it look more realistic
-    if random.random() > 0.5:
-        receipt = receipt.filter(ImageFilter.GaussianBlur(radius=0.5))
-    
-    # Add randomized paper texture
-    for _ in range(2000):
-        x = random.randint(0, width - 1)
-        y = random.randint(0, height - 1)
-        size = random.randint(1, 3)
-        color_shift = random.randint(-10, 0)  # Slight darkening
-        draw.point((x, y), fill=(255 + color_shift, 255 + color_shift, 255 + color_shift))
-    
-    # Add slight rotation for realism
-    rotation = random.uniform(-3, 3)
+    # Add minor rotation for realism
+    rotation = random.uniform(-1, 1)
     receipt = receipt.rotate(rotation, expand=True, fillcolor='white')
-    
-    # Add random slight creases or fold marks
-    if random.random() > 0.6:
-        draw = ImageDraw.Draw(receipt)
-        for _ in range(random.randint(1, 3)):
-            # Horizontal crease
-            y = random.randint(0, height)
-            for x in range(0, width, 4):
-                if random.random() > 0.7:  # Make the line broken
-                    shade = random.randint(200, 240)
-                    draw.line([(x, y), (x + random.randint(1, 3), y)], fill=(shade, shade, shade), width=1)
     
     return receipt
 
@@ -665,21 +700,21 @@ def create_tax_document(image_size=2048):
         payg = random.randint(10000, 50000)
         total = net_gst + payg
         
-        draw.text((image_size//5 + 30, content_top + 90), f"G1. Total sales (including GST):", fill="black", font=small_font)
+        draw.text((image_size//5 + 30, content_top + 90), "G1. Total sales (including GST):", fill="black", font=small_font)
         draw.text((image_size*4//5 - 200, content_top + 90), f"${sales:,}", fill="black", font=small_font)
         
-        draw.text((image_size//5 + 30, content_top + 140), f"G3. GST on sales:", fill="black", font=small_font)
+        draw.text((image_size//5 + 30, content_top + 140), "G3. GST on sales:", fill="black", font=small_font)
         draw.text((image_size*4//5 - 200, content_top + 140), f"${gst_sales:,}.00", fill="black", font=small_font)
         
-        draw.text((image_size//5 + 30, content_top + 190), f"G10. Purchases (including GST):", fill="black", font=small_font)
+        draw.text((image_size//5 + 30, content_top + 190), "G10. Purchases (including GST):", fill="black", font=small_font)
         draw.text((image_size*4//5 - 200, content_top + 190), f"${purchases:,}", fill="black", font=small_font)
         
-        draw.text((image_size//5 + 30, content_top + 240), f"G11. GST on purchases:", fill="black", font=small_font)
+        draw.text((image_size//5 + 30, content_top + 240), "G11. GST on purchases:", fill="black", font=small_font)
         draw.text((image_size*4//5 - 200, content_top + 240), f"${gst_purchases:,}.00", fill="black", font=small_font)
         
         draw.line([(image_size//5 + 30, content_top + 290), (image_size*4//5 - 30, content_top + 290)], fill="black", width=1)
         
-        draw.text((image_size//5 + 30, content_top + 330), f"Total amount payable:", fill="black", font=body_font)
+        draw.text((image_size//5 + 30, content_top + 330), "Total amount payable:", fill="black", font=body_font)
         draw.text((image_size*4//5 - 200, content_top + 330), f"${total:,}.00", fill=(200, 0, 0), font=body_font)
     
     else:
@@ -717,11 +752,11 @@ def create_tax_document(image_size=2048):
              "This document must be retained for taxation purposes.", 
              fill="black", font=small_font)
     
-    # Apply some slight rotation for realism
-    rotation = random.uniform(-1, 1)
+    # Minor rotation to maintain document sharpness
+    rotation = random.uniform(-0.5, 0.5)
     doc = doc.rotate(rotation, expand=True, fillcolor='white')
     
-    # Resize to maintain the required dimensions
+    # Resize while maintaining the required dimensions and quality
     doc = doc.resize((image_size, image_size), Image.LANCZOS)
     
     return doc
@@ -739,6 +774,16 @@ def create_receipt_collage(receipt_count, image_size=2048, stapled=False):
     Returns:
         PIL Image containing the receipt collage
     """
+    # Generate date and time displays for collages
+    day = random.randint(1, 28)
+    month = random.randint(1, 12)
+    year = random.randint(2020, 2023)
+    date_str_display = f"{day}/{month}/{year}"
+    
+    hour = random.randint(8, 21)
+    minute = random.randint(0, 59)
+    am_pm = "AM" if hour < 12 else "PM"
+    time_str_display = f"{hour}:{minute:02d} {am_pm}"
     # Create blank image for collage
     collage = create_blank_image(image_size, image_size, 'white')
     
@@ -807,6 +852,34 @@ def create_receipt_collage(receipt_count, image_size=2048, stapled=False):
                 # Center the receipt
                 x_pos = (image_size - receipt.width) // 2
                 y_pos = (image_size - receipt.height) // 2
+                
+                # Make sure the receipt has complete data by drawing directly on it
+                # Create a new image where we can place the receipt with all values filled
+                receipt_with_values = create_blank_image(image_size, image_size, 'white')
+                draw = ImageDraw.Draw(receipt_with_values)
+                
+                # Draw the receipt first
+                receipt_with_values.paste(receipt, (x_pos, y_pos))
+                
+                # Get center coordinates and add missing information
+                center_x = image_size // 2
+                y_start = y_pos + receipt.height // 4
+                
+                # Try to use nice fonts
+                try:
+                    font = ImageFont.truetype("Arial", 40)
+                    small_font = ImageFont.truetype("Arial", 30)
+                except:
+                    font = ImageFont.load_default()
+                    small_font = font
+                
+                # Add store info above the receipt
+                draw.text((center_x - 150, y_pos - 100), f"DATE: {date_str_display}", fill="black", font=font)
+                draw.text((center_x - 150, y_pos - 50), f"TIME: {time_str_display}", fill="black", font=font)
+                
+                # Return this composite image instead of the original receipt
+                collage = receipt_with_values
+                continue  # Skip the normal pasting code below
             else:
                 # Distribute receipts across the image
                 if idx % 2 == 0:  # Left side
@@ -819,10 +892,7 @@ def create_receipt_collage(receipt_count, image_size=2048, stapled=False):
             # Paste the receipt onto the collage
             collage.paste(receipt, (x_pos, y_pos))
     
-    # Apply final touch-ups
-    if random.random() > 0.7:
-        # Add slight blur occasionally
-        collage = collage.filter(ImageFilter.GaussianBlur(radius=0.3))
+    # No blur to maintain high image quality
     
     return collage
 
