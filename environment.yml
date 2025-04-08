@@ -12,8 +12,9 @@ dependencies:
   - matplotlib
   - tqdm
   # CPU configuration (default for cost-effective cloud testing)
-  - pytorch>=2.0.0=cpu
-  - torchvision=cpu
+  - pytorch::pytorch>=2.0.0
+  - pytorch::torchvision
+  - cpuonly
   
   # GPU support (uncomment when moving to GPU instance)
   # - pytorch>=2.0.0
