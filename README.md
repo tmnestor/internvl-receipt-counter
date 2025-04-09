@@ -202,9 +202,11 @@ For maximum training performance, this project supports several acceleration tec
      pip install flash-attn>=2.5.0
      ```
 
-2. **Mixed Precision**:
-   - Uses BFloat16 on supported GPUs (Ampere+) or Float16 otherwise
-   - Configure with `mixed_precision: true` in config.yaml
+2. **Mixed Precision** (currently disabled due to compatibility issues):
+   - Note: Currently disabled by default due to FP16 gradient issues
+   - Uses Float16 for training 
+   - Enable at your own risk with `mixed_precision: true` in config.yaml
+   - May cause "Attempting to unscale FP16 gradients" errors with some model configurations
 
 3. **torch.compile**:
    - Dynamically optimizes PyTorch operations

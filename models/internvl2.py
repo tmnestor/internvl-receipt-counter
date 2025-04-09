@@ -94,9 +94,9 @@ class InternVL2ReceiptClassifier(nn.Module):
                         kwargs["torch_dtype"] = torch.float16
                 else:
                     # Use bfloat16 if available, otherwise fall back to float16
-                    # Always use float16 for compatibility with GradScaler
-                    kwargs["torch_dtype"] = torch.float16
-                    self.logger.info("Using float16 precision for GradScaler compatibility")
+                    # Use float32 for full precision training (mixed precision disabled)
+                    kwargs["torch_dtype"] = torch.float32
+                    self.logger.info("Using float32 precision for better compatibility and stability")
             else:
                 # CPU only, use float32 for compatibility
                 self.logger.info("CUDA not available, using float32 precision")

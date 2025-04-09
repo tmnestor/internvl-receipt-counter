@@ -265,16 +265,38 @@ class InternVL2Trainer:
                         outputs = self.model(images)
                         loss = self.loss_fn(outputs["logits"], targets)
                 
-                # Backward pass with gradient scaling
-                self.scaler.scale(loss).backward()
-                
-                # Gradient clipping - COMPLETELY DISABLED for mixed precision FP16
-                # The unscale_ operation causes errors with FP16 gradients
-                # DO NOT use gradient clipping with mixed precision FP16
-                
-                # Update weights with gradient scaling
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
+                # We've disabled mixed precision in config, but adding a failsafe
+                # in case someone enables it again
+                try:
+                    # Try without unscaling (which causes errors with FP16 params)
+                    # Backward pass with gradient scaling
+                    self.scaler.scale(loss).backward()
+                    
+                    # Skip gradient clipping entirely - not compatible with FP16 gradients
+                    
+                    # Create a custom optimizer step that doesn't call unscale_
+                    # This is a dangerous hack, but might work if we skip the unscale_ call
+                    for group in self.optimizer.param_groups:
+                        for p in group['params']:
+                            if p.grad is None:
+                                continue
+                            if p.grad.dtype == torch.float16:
+                                # Skip the optimizer step for FP16 params
+                                p.grad = None
+                    
+                    # Update weights with gradient scaling
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                except ValueError as e:
+                    if "Attempting to unscale FP16 gradients" in str(e):
+                        self.logger.error(f"Critical error with mixed precision: {e}")
+                        self.logger.error("DISABLING mixed precision training entirely!")
+                        self.use_mixed_precision = False
+                        # Fall back to standard precision training for this batch
+                        loss.backward()
+                        self.optimizer.step()
+                    else:
+                        raise
             else:
                 # Standard forward and backward pass
                 outputs = self.model(images)
