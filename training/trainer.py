@@ -95,7 +95,17 @@ class InternVL2Trainer:
         
         # Setup mixed precision
         self.use_mixed_precision = config["training"].get("mixed_precision", False)
-        self.scaler = GradScaler(device_type='cuda' if torch.cuda.is_available() else 'cpu') if self.use_mixed_precision else None
+        if self.use_mixed_precision:
+            try:
+                # Try the newer API (PyTorch 2.0+)
+                self.scaler = GradScaler(device_type='cuda' if torch.cuda.is_available() else 'cpu')
+                self.logger.info("Using device-specific GradScaler")
+            except TypeError:
+                # Fall back to older API
+                self.scaler = GradScaler()
+                self.logger.info("Using legacy GradScaler")
+        else:
+            self.scaler = None
         
         # Setup training parameters
         self.epochs = config["training"]["epochs"]
@@ -232,11 +242,18 @@ class InternVL2Trainer:
             
             # Forward pass with mixed precision if enabled
             if self.use_mixed_precision:
-                device_type = 'cuda' if torch.cuda.is_available() else 'cpu'
-                dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
-                with autocast(device_type=device_type, dtype=dtype):
-                    outputs = self.model(images)
-                    loss = self.loss_fn(outputs["logits"], targets)
+                try:
+                    # Try the newer API (PyTorch 2.0+)
+                    device_type = 'cuda' if torch.cuda.is_available() else 'cpu'
+                    dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+                    with autocast(device_type=device_type, dtype=dtype):
+                        outputs = self.model(images)
+                        loss = self.loss_fn(outputs["logits"], targets)
+                except TypeError:
+                    # Fall back to older API
+                    with autocast():
+                        outputs = self.model(images)
+                        loss = self.loss_fn(outputs["logits"], targets)
                 
                 # Backward pass with gradient scaling
                 self.scaler.scale(loss).backward()
