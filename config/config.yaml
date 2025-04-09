@@ -42,7 +42,7 @@ training:
     learning_rate: 5e-5
     backbone_lr_multiplier: 0.1
     weight_decay: 0.01
-    gradient_clip: 1.0
+    gradient_clip: 0.0  # Disabled due to FP16 gradient issues
   scheduler:
     name: "cosine"
     warmup_epochs: 3
