@@ -150,9 +150,14 @@ class InternVL2ReceiptClassifier(nn.Module):
             activation=config["model"]["classifier"]["activation"],
         )
         
-        # Ensure all components use the same dtype in CPU mode
-        if not torch.cuda.is_available():
-            # Convert classification head to float32 for CPU as well
+        # Ensure all components use the same dtype
+        if torch.cuda.is_available():
+            # Use same precision as model on GPU
+            model_dtype = next(self.model.parameters()).dtype
+            self.logger.info(f"Converting classification head to model dtype: {model_dtype}")
+            self.classification_head = self.classification_head.to(model_dtype)
+        else:
+            # Convert classification head to float32 for CPU
             self.classification_head = self.classification_head.float()
                 
         # Remove language model-related components to save memory
@@ -284,21 +289,23 @@ class InternVL2ReceiptClassifier(nn.Module):
         # Global average pooling over sequence dimension
         pooled_output = image_embeds.mean(dim=1)
         
-        # Ensure correct dtype for classifier - CRITICAL for dtype compatibility
+        # Simplified dtype handling - we know the types match from initialization
+        # This section kept in case initialization fails or model is modified at runtime
+        if not hasattr(self, '_model_classifier_dtypes_matched'):
+            if hasattr(self.classification_head, 'mlp') and len(self.classification_head.mlp) > 0:
+                if hasattr(self.classification_head.mlp[0], 'weight'):
+                    target_dtype = self.classification_head.mlp[0].weight.dtype
+                    if pooled_output.dtype != target_dtype:
+                        self.logger.info(f"One-time conversion from {pooled_output.dtype} to {target_dtype}")
+                        self._model_classifier_dtypes_matched = True
+                    else:
+                        self.logger.info(f"No conversion needed: model output already {pooled_output.dtype}")
+                        self._model_classifier_dtypes_matched = True
+            
+        # Force ensure compatibility by getting classifier dtype directly
         if hasattr(self.classification_head, 'mlp') and len(self.classification_head.mlp) > 0:
-            # Get the dtype of the first linear layer in classification head
             if hasattr(self.classification_head.mlp[0], 'weight'):
-                target_dtype = self.classification_head.mlp[0].weight.dtype
-                # Ensure input has same dtype as classification head weights
-                if pooled_output.dtype != target_dtype:
-                    self.logger.info(f"Converting pooled output from {pooled_output.dtype} to {target_dtype}")
-                    pooled_output = pooled_output.to(target_dtype)
-            else:
-                # Fallback to float32 if we can't determine the dtype
-                pooled_output = pooled_output.to(torch.float32)
-        else:
-            # Fallback to float32 if classifier structure is unexpected
-            pooled_output = pooled_output.to(torch.float32)
+                pooled_output = pooled_output.to(self.classification_head.mlp[0].weight.dtype)
         
         # Pass through classifier head
         logits = self.classification_head(pooled_output)

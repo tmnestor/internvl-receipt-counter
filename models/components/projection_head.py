@@ -79,6 +79,11 @@ class ClassificationHead(nn.Module):
         
         # Create sequential model
         self.mlp = nn.Sequential(*layers)
+        
+        # Convert model to bfloat16 if using GPU with bfloat16 support
+        if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8:
+            # Get majority dtype of tensors in the model
+            self.mlp = self.mlp.to(torch.bfloat16)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -92,7 +97,7 @@ class ClassificationHead(nn.Module):
         """
         # Check for dtype compatibility with first linear layer
         if len(self.mlp) > 0 and hasattr(self.mlp[0], 'weight') and x.dtype != self.mlp[0].weight.dtype:
-            # Ensure input has same dtype as weights
+            # Ensure input has same dtype as weights without logging
             x = x.to(self.mlp[0].weight.dtype)
         
         return self.mlp(x)
