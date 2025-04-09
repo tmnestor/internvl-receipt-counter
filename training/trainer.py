@@ -53,6 +53,9 @@ class InternVL2Trainer:
         self.device = get_device()
         self.model.to(self.device)
         
+        # Get logger
+        self.logger = logging.getLogger(__name__)
+        
         # Apply torch.compile for GPU acceleration if available and enabled in config
         if (torch.cuda.is_available() and hasattr(torch, 'compile') and 
                 self.config["training"].get("torch_compile", False)):
