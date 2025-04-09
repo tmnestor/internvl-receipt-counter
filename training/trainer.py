@@ -533,8 +533,26 @@ class InternVL2Trainer:
                         lr_multiplier=self.config["training"]["optimizer"]["backbone_lr_multiplier"]
                     )
                     
+                    # Get current optimizer state to preserve momentum
+                    old_optimizer_state = None
+                    try:
+                        if hasattr(self.optimizer, 'state_dict'):
+                            old_state_dict = self.optimizer.state_dict()
+                            if 'state' in old_state_dict:
+                                old_optimizer_state = old_state_dict['state']
+                                self.logger.info("Captured optimizer state for momentum preservation")
+                    except Exception as e:
+                        self.logger.warning(f"Could not capture optimizer state: {e}")
+                        old_optimizer_state = None
+                    
                     # Re-initialize optimizer with new parameter groups
                     self.optimizer = self._get_optimizer(param_groups)
+                    
+                    # Log learning rates for inspection
+                    lr_info = "Learning rates for Stage 2: "
+                    for i, group in enumerate(self.optimizer.param_groups):
+                        lr_info += f"Group {i}: {group['lr']:.2e} "
+                    self.logger.info(lr_info)
                     
                     # Re-initialize scheduler
                     self.scheduler = self._get_scheduler()

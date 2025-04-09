@@ -170,9 +170,10 @@ class InternVL2ReceiptClassifier(nn.Module):
         
         # Classification head is now created after getting the vision encoder
         
-    def unfreeze_vision_encoder(self, lr_multiplier: float = 0.1) -> List[Dict]:
+    def unfreeze_vision_encoder(self, lr_multiplier: float = 0.01) -> List[Dict]:
         """
         Unfreeze the vision encoder and prepare parameter groups for optimizer.
+        Uses a very small learning rate multiplier to prevent catastrophic forgetting.
         
         Args:
             lr_multiplier: Learning rate multiplier for vision encoder parameters
@@ -180,14 +181,36 @@ class InternVL2ReceiptClassifier(nn.Module):
         Returns:
             List of parameter groups for optimizer
         """
-        # Unfreeze all vision encoder parameters
-        for param in self.vision_encoder.parameters():
-            param.requires_grad = True
+        # First, check which layers are most appropriate to tune
+        # For InternVL2, we'll focus on the last few layers of the vision encoder
+        # rather than unfreezing everything at once
+        
+        total_layers = 0
+        last_n_layers = 2  # Only unfreeze the last few layers initially
+        
+        # Count layers in vision encoder
+        for name, param in self.vision_encoder.named_parameters():
+            total_layers += 1
+        
+        # Selectively unfreeze only the last few layers
+        unfrozen_count = 0
+        for name, param in self.vision_encoder.named_parameters():
+            # If in the last n layers or contains 'classifier' or 'head' or 'pooler'
+            if (unfrozen_count >= total_layers - last_n_layers or 
+                any(x in name.lower() for x in ['classifier', 'head', 'pooler', 'output'])):
+                param.requires_grad = True
+                unfrozen_count += 1
+                self.logger.info(f"Unfreezing layer: {name}")
+            else:
+                param.requires_grad = False
+        
+        self.logger.info(f"Unfrozen {unfrozen_count} of {total_layers} vision encoder layers")
             
         # Create parameter groups with different learning rates
+        # Use a very low learning rate for vision encoder to prevent catastrophic forgetting
         return [
-            {'params': self.classification_head.parameters()},
-            {'params': self.vision_encoder.parameters(), 'lr': lr_multiplier}
+            {'params': self.classification_head.parameters()},  # Full learning rate
+            {'params': [p for p in self.vision_encoder.parameters() if p.requires_grad], 'lr': lr_multiplier}  # Reduced LR
         ]
     
     def forward(self, pixel_values: torch.Tensor) -> Dict[str, torch.Tensor]:

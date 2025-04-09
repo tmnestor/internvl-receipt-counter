@@ -40,9 +40,9 @@ training:
   optimizer:
     name: "adamw"
     learning_rate: 5e-5
-    backbone_lr_multiplier: 0.1
+    backbone_lr_multiplier: 0.01  # Reduced from 0.1 to prevent catastrophic forgetting
     weight_decay: 0.01
-    gradient_clip: 0.0  # Disabled due to FP16 gradient issues
+    gradient_clip: 1.0  # Re-enabled for non-mixed-precision training
   scheduler:
     name: "cosine"
     warmup_epochs: 3
@@ -59,8 +59,8 @@ training:
   flash_attention: true  # Use Flash Attention if available
   three_stage:
     enabled: true
-    mlp_warmup_epochs: 5
-    vision_tuning_epochs: 5
+    mlp_warmup_epochs: 5  # Training only classification head
+    vision_tuning_epochs: 2  # Reduced from 5 to shorter, gentler fine-tuning of vision encoder
 
 # Evaluation configuration
 evaluation:
