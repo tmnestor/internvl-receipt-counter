@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
-from transformers import AutoModel, AutoConfig
+from transformers import AutoConfig, AutoModel
 
 from models.components.projection_head import ClassificationHead
 

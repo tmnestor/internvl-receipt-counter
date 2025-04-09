@@ -9,9 +9,10 @@ from typing import Any, Dict, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from models.internvl2 import InternVL2ReceiptClassifier
 from torch.cuda.amp import GradScaler, autocast
 from torch.utils.data import DataLoader
+
+from models.internvl2 import InternVL2ReceiptClassifier
 from utils.device import get_device, to_device
 from utils.logging import TensorboardLogger
 
