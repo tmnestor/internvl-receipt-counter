@@ -14,6 +14,20 @@ from transformers import AutoModel, AutoConfig
 
 from models.components.projection_head import ClassificationHead
 
+# Import Flash Attention and xFormers if available
+try:
+    import flash_attn
+    HAS_FLASH_ATTN = True
+except ImportError:
+    HAS_FLASH_ATTN = False
+
+try:
+    import xformers
+    import xformers.ops
+    HAS_XFORMERS = True
+except ImportError:
+    HAS_XFORMERS = False
+
 
 class InternVL2ReceiptClassifier(nn.Module):
     """
@@ -56,6 +70,13 @@ class InternVL2ReceiptClassifier(nn.Module):
                 "trust_remote_code": True,
                 "local_files_only": True  # Ensure no download attempts
             }
+            
+            # Enable Flash Attention if available and configured
+            if config["training"].get("flash_attention", False) and HAS_FLASH_ATTN:
+                self.logger.info("Using Flash Attention for faster training")
+                kwargs["attn_implementation"] = "flash_attention_2"
+            elif config["training"].get("flash_attention", False) and not HAS_FLASH_ATTN:
+                self.logger.warning("Flash Attention requested but not available. Install with: pip install flash-attn>=2.5.0")
             
             # Set precision based on hardware
             if torch.cuda.is_available():

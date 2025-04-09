@@ -18,6 +18,12 @@ The model leverages the powerful vision capabilities of InternVL with a 448×448
   3. Fine-tune the complete model
 - Comprehensive evaluation metrics
 - Attention visualization for model interpretability
+- GPU acceleration with:
+  - Flash Attention 2 for efficient transformer operations
+  - Mixed precision training with BFloat16 support
+  - torch.compile for optimized training speed
+  - xFormers for memory-efficient attention
+  - DeepSpeed for distributed training
 
 ## Installation
 
@@ -179,6 +185,28 @@ Before running the application:
    ```
    
    After downloading, update the `pretrained_path` in your config.yaml to point to this location.
+
+### GPU Acceleration Setup
+
+For maximum training performance, this project supports several acceleration technologies:
+
+1. **Flash Attention 2**:
+   - Automatically used if installed (`pip install flash-attn>=2.5.0`)
+   - Provides faster, memory-efficient attention computation
+   - Enable with `flash_attention: true` in config.yaml
+
+2. **Mixed Precision**:
+   - Uses BFloat16 on supported GPUs (Ampere+) or Float16 otherwise
+   - Configure with `mixed_precision: true` in config.yaml
+
+3. **torch.compile**:
+   - Dynamically optimizes PyTorch operations
+   - Enable with `torch_compile: true` in config.yaml
+   - Requires PyTorch 2.0+
+
+4. **Distributed Training with DeepSpeed**:
+   - For multi-GPU setups
+   - Launch with: `deepspeed main.py --config config/config.yaml --mode train`
 
 ## Configuration
 

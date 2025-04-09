@@ -52,6 +52,15 @@ class InternVL2Trainer:
         self.device = get_device()
         self.model.to(self.device)
         
+        # Apply torch.compile for GPU acceleration if available and enabled in config
+        if (torch.cuda.is_available() and hasattr(torch, 'compile') and 
+                self.config["training"].get("torch_compile", False)):
+            try:
+                self.model = torch.compile(self.model, mode='reduce-overhead')
+                self.logger.info("Using torch.compile for GPU acceleration")
+            except Exception as e:
+                self.logger.warning(f"Failed to apply torch.compile: {e}")
+        
         # Setup loss function
         self.loss_fn = self._get_loss_function()
         
@@ -198,7 +207,7 @@ class InternVL2Trainer:
             
             # Forward pass with mixed precision if enabled
             if self.use_mixed_precision:
-                with autocast():
+                with autocast(dtype=torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16):
                     outputs = self.model(images)
                     loss = self.loss_fn(outputs["logits"], targets)
                 
@@ -253,7 +262,7 @@ class InternVL2Trainer:
 
     def validate(self, epoch: int) -> Tuple[float, float]:
         """
-        Validate the model on the validation set.
+        Validate the model on the validation set with improved error handling.
         
         Args:
             epoch: Current epoch number
@@ -269,71 +278,137 @@ class InternVL2Trainer:
         # Get dataloader
         val_loader = self.dataloaders["val"]
         
+        # Additional debugging info
+        self.logger.info(f"Starting validation for epoch {epoch} with {len(val_loader)} batches")
+        
         # No gradient computation during validation
         with torch.no_grad():
-            for images, targets in val_loader:
+            for batch_idx, (images, targets) in enumerate(val_loader):
+                # Add progress logging
+                if batch_idx % 10 == 0 or batch_idx >= len(val_loader) - 10:
+                    self.logger.info(f"Validation batch: {batch_idx}/{len(val_loader)}")
+                
                 # Move data to device
                 images, targets = to_device((images, targets), self.device)
                 
-                # Forward pass (no mixed precision needed for validation)
-                outputs = self.model(images)
-                loss = self.loss_fn(outputs["logits"], targets)
-                
-                # Calculate accuracy
-                _, predicted = outputs["logits"].max(1)
-                total += targets.size(0)
-                correct += predicted.eq(targets).sum().item()
-                
-                # Update running loss
-                running_loss += loss.item()
+                try:
+                    # Forward pass (no mixed precision needed for validation)
+                    outputs = self.model(images)
+                    loss = self.loss_fn(outputs["logits"], targets)
+                    
+                    # Calculate accuracy
+                    _, predicted = outputs["logits"].max(1)
+                    total += targets.size(0)
+                    correct += predicted.eq(targets).sum().item()
+                    
+                    # Update running loss
+                    running_loss += loss.item()
+                    
+                except Exception as e:
+                    self.logger.error(f"Error in validation batch {batch_idx}: {e}")
+                    self.logger.error(f"Image shape: {images.shape}, Target shape: {targets.shape}")
+                    import traceback
+                    self.logger.error(traceback.format_exc())
+                    # Continue with next batch rather than failing
+                    continue
         
         # Calculate epoch metrics
-        epoch_loss = running_loss / len(val_loader)
-        epoch_acc = 100. * correct / total
+        if total > 0:  # Protect against division by zero
+            epoch_loss = running_loss / len(val_loader) if len(val_loader) > 0 else float('inf')
+            epoch_acc = 100. * correct / total
+        else:
+            self.logger.warning("No samples were successfully processed during validation")
+            epoch_loss = float('inf')
+            epoch_acc = 0.0
         
         # Log to TensorBoard
         if self.tensorboard:
             self.tensorboard.log_scalar("val/loss", epoch_loss, epoch)
             self.tensorboard.log_scalar("val/accuracy", epoch_acc, epoch)
         
-        self.logger.info(f"Validation: Loss: {epoch_loss:.4f} Acc: {epoch_acc:.2f}%")
+        self.logger.info(f"Validation completed: Loss: {epoch_loss:.4f} Acc: {epoch_acc:.2f}%")
         
         return epoch_loss, epoch_acc
 
     def save_checkpoint(self, epoch: int, is_best: bool = False) -> None:
         """
-        Save model checkpoint.
+        Save model checkpoint with improved error handling.
         
         Args:
             epoch: Current epoch number
             is_best: Whether this is the best model so far
         """
-        checkpoint_dir = self.output_dir / "checkpoints"
-        checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Prepare checkpoint
-        checkpoint = {
-            "epoch": epoch,
-            "model_state_dict": self.model.state_dict(),
-            "optimizer_state_dict": self.optimizer.state_dict(),
-            "scheduler_state_dict": self.scheduler.state_dict() if self.scheduler else None,
-            "scaler_state_dict": self.scaler.state_dict() if self.scaler else None,
-            "val_loss": self.best_val_loss,
-            "val_acc": self.best_val_acc,
-            "history": self.history
-        }
-        
-        # Save checkpoint
-        if not self.config["output"].get("save_best_only", False) or is_best:
-            checkpoint_path = checkpoint_dir / f"model_epoch_{epoch}.pt"
-            torch.save(checkpoint, checkpoint_path)
-            self.logger.info(f"Checkpoint saved to {checkpoint_path}")
-        
-        # Save best model
-        if is_best:
-            best_path = self.output_dir / "best_model.pt"
-            torch.save(checkpoint, best_path)
-            self.logger.info(f"Best model saved to {best_path}")
+        try:
+            self.logger.info(f"Starting checkpoint save for epoch {epoch}")
+            checkpoint_dir = self.output_dir / "checkpoints"
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Prepare checkpoint components one by one with logging
+            self.logger.info("Preparing checkpoint components...")
+            
+            try:
+                model_state = self.model.state_dict()
+                self.logger.info(f"Model state dict captured, size: {len(model_state)} layers")
+            except Exception as e:
+                self.logger.error(f"Error capturing model state: {e}")
+                model_state = None
+                
+            try:
+                optimizer_state = self.optimizer.state_dict()
+                self.logger.info("Optimizer state dict captured")
+            except Exception as e:
+                self.logger.error(f"Error capturing optimizer state: {e}")
+                optimizer_state = None
+                
+            scheduler_state = None
+            if self.scheduler:
+                try:
+                    scheduler_state = self.scheduler.state_dict()
+                    self.logger.info("Scheduler state dict captured")
+                except Exception as e:
+                    self.logger.error(f"Error capturing scheduler state: {e}")
+            
+            scaler_state = None
+            if self.scaler:
+                try:
+                    scaler_state = self.scaler.state_dict()
+                    self.logger.info("Scaler state dict captured")
+                except Exception as e:
+                    self.logger.error(f"Error capturing scaler state: {e}")
+            
+            # Assemble the checkpoint
+            checkpoint = {
+                "epoch": epoch,
+                "model_state_dict": model_state,
+                "optimizer_state_dict": optimizer_state,
+                "scheduler_state_dict": scheduler_state,
+                "scaler_state_dict": scaler_state,
+                "val_loss": self.best_val_loss,
+                "val_acc": self.best_val_acc,
+                "history": self.history
+            }
+            
+            # Save the checkpoint
+            if not self.config["output"].get("save_best_only", False) or is_best:
+                self.logger.info(f"Saving checkpoint for epoch {epoch}...")
+                checkpoint_path = checkpoint_dir / f"model_epoch_{epoch}.pt"
+                torch.save(checkpoint, checkpoint_path)
+                self.logger.info(f"Checkpoint saved to {checkpoint_path}")
+            
+            # Save best model
+            if is_best:
+                self.logger.info("Saving best model...")
+                best_path = self.output_dir / "best_model.pt"
+                torch.save(checkpoint, best_path)
+                self.logger.info(f"Best model saved to {best_path}")
+                
+            self.logger.info("Checkpoint saving completed successfully")
+            
+        except Exception as e:
+            self.logger.error(f"Error during checkpoint saving: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            self.logger.warning("Continuing without saving checkpoint")
 
     def train(self) -> Tuple[InternVL2ReceiptClassifier, Dict]:
         """

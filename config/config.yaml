@@ -51,6 +51,9 @@ training:
     name: "cross_entropy"
     label_smoothing: 0.1
   mixed_precision: true
+  # Acceleration options
+  torch_compile: true  # Enable torch.compile for faster training
+  flash_attention: true  # Use Flash Attention if available
   three_stage:
     enabled: true
     mlp_warmup_epochs: 5
