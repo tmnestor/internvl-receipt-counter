@@ -90,4 +90,9 @@ class ClassificationHead(nn.Module):
         Returns:
             Logits tensor of shape [batch_size, output_dim]
         """
+        # Check for dtype compatibility with first linear layer
+        if len(self.mlp) > 0 and hasattr(self.mlp[0], 'weight') and x.dtype != self.mlp[0].weight.dtype:
+            # Ensure input has same dtype as weights
+            x = x.to(self.mlp[0].weight.dtype)
+        
         return self.mlp(x)

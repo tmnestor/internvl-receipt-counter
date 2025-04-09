@@ -284,9 +284,20 @@ class InternVL2ReceiptClassifier(nn.Module):
         # Global average pooling over sequence dimension
         pooled_output = image_embeds.mean(dim=1)
         
-        # Ensure correct dtype for classifier
-        if not torch.cuda.is_available():
-            # Convert to float32 for CPU classifier
+        # Ensure correct dtype for classifier - CRITICAL for dtype compatibility
+        if hasattr(self.classification_head, 'mlp') and len(self.classification_head.mlp) > 0:
+            # Get the dtype of the first linear layer in classification head
+            if hasattr(self.classification_head.mlp[0], 'weight'):
+                target_dtype = self.classification_head.mlp[0].weight.dtype
+                # Ensure input has same dtype as classification head weights
+                if pooled_output.dtype != target_dtype:
+                    self.logger.info(f"Converting pooled output from {pooled_output.dtype} to {target_dtype}")
+                    pooled_output = pooled_output.to(target_dtype)
+            else:
+                # Fallback to float32 if we can't determine the dtype
+                pooled_output = pooled_output.to(torch.float32)
+        else:
+            # Fallback to float32 if classifier structure is unexpected
             pooled_output = pooled_output.to(torch.float32)
         
         # Pass through classifier head

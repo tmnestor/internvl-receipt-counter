@@ -336,9 +336,24 @@ class InternVL2Trainer:
                 images, targets = to_device((images, targets), self.device)
                 
                 try:
-                    # Forward pass (no mixed precision needed for validation)
-                    outputs = self.model(images)
-                    loss = self.loss_fn(outputs["logits"], targets)
+                    # Keep same precision handling for validation and training
+                    if self.use_mixed_precision:
+                        try:
+                            # Try the newer API (PyTorch 2.0+)
+                            device_type = 'cuda' if torch.cuda.is_available() else 'cpu'
+                            dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+                            with autocast(device_type=device_type, dtype=dtype):
+                                outputs = self.model(images)
+                                loss = self.loss_fn(outputs["logits"], targets)
+                        except TypeError:
+                            # Fall back to older API
+                            with autocast():
+                                outputs = self.model(images)
+                                loss = self.loss_fn(outputs["logits"], targets)
+                    else:
+                        # No mixed precision
+                        outputs = self.model(images)
+                        loss = self.loss_fn(outputs["logits"], targets)
                     
                     # Calculate accuracy
                     _, predicted = outputs["logits"].max(1)
