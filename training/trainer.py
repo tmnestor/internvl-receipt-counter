@@ -2,6 +2,7 @@
 Trainer implementation for the InternVL2 receipt counter.
 """
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -9,7 +10,8 @@ from typing import Any, Dict, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.cuda.amp import GradScaler, autocast
+# Using torch.amp instead of torch.cuda.amp (which is deprecated)
+from torch.amp import GradScaler, autocast
 from torch.utils.data import DataLoader
 
 from models.internvl2 import InternVL2ReceiptClassifier
@@ -49,19 +51,38 @@ class InternVL2Trainer:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
+        # Get logger first so we can use it everywhere
+        self.logger = logging.getLogger(__name__)
+        
+        # Setup optional environment optimization
+        if torch.cuda.is_available():
+            # Set CUDA optimization environment variables
+            os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+            if not os.environ.get("CUDA_LAUNCH_BLOCKING"):
+                os.environ["CUDA_LAUNCH_BLOCKING"] = "0"  # Better performance but less readable errors
+            
+            # Log CUDA information
+            self.logger.info(f"CUDA device: {torch.cuda.get_device_name(0)}")
+            self.logger.info(f"CUDA capability: {torch.cuda.get_device_capability()}")
+        
         # Setup device
         self.device = get_device()
         self.model.to(self.device)
-        
-        # Get logger
-        self.logger = logging.getLogger(__name__)
         
         # Apply torch.compile for GPU acceleration if available and enabled in config
         if (torch.cuda.is_available() and hasattr(torch, 'compile') and 
                 self.config["training"].get("torch_compile", False)):
             try:
-                self.model = torch.compile(self.model, mode='reduce-overhead')
-                self.logger.info("Using torch.compile for GPU acceleration")
+                # Only compile if the model is in full precision to avoid dtype mismatches
+                compile_full_precision_only = self.config["training"].get("compile_full_precision_only", True)
+                if compile_full_precision_only and self.use_mixed_precision:
+                    self.logger.warning("Skipping torch.compile because mixed precision is enabled. "
+                                      "Set compile_full_precision_only: false in config to override.")
+                else:
+                    compile_mode = self.config["training"].get("compile_mode", "reduce-overhead")
+                    self.logger.info(f"Applying torch.compile with mode: {compile_mode}")
+                    self.model = torch.compile(self.model, mode=compile_mode)
+                    self.logger.info("Successfully applied torch.compile for GPU acceleration")
             except Exception as e:
                 self.logger.warning(f"Failed to apply torch.compile: {e}")
         
@@ -74,7 +95,7 @@ class InternVL2Trainer:
         
         # Setup mixed precision
         self.use_mixed_precision = config["training"].get("mixed_precision", False)
-        self.scaler = GradScaler() if self.use_mixed_precision else None
+        self.scaler = GradScaler(device_type='cuda' if torch.cuda.is_available() else 'cpu') if self.use_mixed_precision else None
         
         # Setup training parameters
         self.epochs = config["training"]["epochs"]
@@ -211,7 +232,9 @@ class InternVL2Trainer:
             
             # Forward pass with mixed precision if enabled
             if self.use_mixed_precision:
-                with autocast(dtype=torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16):
+                device_type = 'cuda' if torch.cuda.is_available() else 'cpu'
+                dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+                with autocast(device_type=device_type, dtype=dtype):
                     outputs = self.model(images)
                     loss = self.loss_fn(outputs["logits"], targets)
                 

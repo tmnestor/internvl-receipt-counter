@@ -202,6 +202,15 @@ class InternVL2ReceiptClassifier(nn.Module):
         if not torch.cuda.is_available():
             # Convert to float32 for CPU
             pixel_values = pixel_values.to(torch.float32)
+        else:
+            # Convert to model's data type for GPU to avoid mixed precision issues
+            if hasattr(self, 'model') and hasattr(self.model, 'dtype'):
+                dtype = self.model.dtype
+                pixel_values = pixel_values.to(dtype)
+            # Default to bfloat16 if device supports it, otherwise float16
+            elif torch.cuda.is_available():
+                dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+                pixel_values = pixel_values.to(dtype)
         
         # Pass through vision encoder
         try:

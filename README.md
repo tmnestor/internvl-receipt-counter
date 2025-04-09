@@ -209,6 +209,13 @@ For maximum training performance, this project supports several acceleration tec
 3. **torch.compile**:
    - Dynamically optimizes PyTorch operations
    - Enable with `torch_compile: true` in config.yaml
+   - Configure mode with `compile_mode`: 
+     - "reduce-overhead": Best for large models (default)
+     - "max-autotune": Maximum performance but slow startup
+     - "default": Balance of compilation speed and runtime
+   - Safety options:
+     - `compile_full_precision_only: true`: Prevents dtype issues with mixed precision
+   - Note: May cause errors with mixed precision in some model architectures
    - Requires PyTorch 2.0+
    - No additional installation needed
 
