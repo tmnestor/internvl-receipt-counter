@@ -68,7 +68,9 @@ class InternVL2ReceiptClassifier(nn.Module):
             kwargs = {
                 "device_map": "auto",
                 "trust_remote_code": True,
-                "local_files_only": True  # Ensure no download attempts
+                "local_files_only": True,  # Ensure no download attempts
+                "use_sliding_window": False,  # Disable sliding window attention to prevent warnings
+                "max_memory": {0: "90%"}  # Explicitly set memory allocation
             }
             
             # Enable Flash Attention if available and configured
@@ -121,16 +123,34 @@ class InternVL2ReceiptClassifier(nn.Module):
         # Extract vision encoder from the full model
         if hasattr(self.model, "vision_model"):
             self.vision_encoder = self.model.vision_model
+            self.logger.info("Using vision_model for vision encoding")
         else:
             # For newer versions/implementation, vision_model might be accessed differently
             try:
                 self.vision_encoder = self.model.vision_encoder
+                self.logger.info("Using vision_encoder for vision encoding")
             except:
                 try:
                     self.vision_encoder = self.model.vision_tower
+                    self.logger.info("Using vision_tower for vision encoding")
                 except:
                     self.logger.warning("Could not extract vision encoder directly. Using full model.")
                     self.vision_encoder = self.model  # Fallback to using full model
+        
+        # Specifically disable sliding window attention and other problematic settings
+        try:
+            # Check for config access points
+            if hasattr(self.model, "config"):
+                if hasattr(self.model.config, "use_sliding_window"):
+                    self.model.config.use_sliding_window = False
+                    self.logger.info("Disabled sliding window attention in model config")
+                    
+            if hasattr(self.vision_encoder, "config"):
+                if hasattr(self.vision_encoder.config, "use_sliding_window"):
+                    self.vision_encoder.config.use_sliding_window = False
+                    self.logger.info("Disabled sliding window attention in vision encoder config")
+        except Exception as e:
+            self.logger.warning(f"Could not disable sliding window attention: {e}")
         
         # Get vision encoder output dimension (do this before creating classification head)
         vision_hidden_size = 512  # Default fallback size
