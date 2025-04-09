@@ -278,6 +278,81 @@ internvl-receipt-counter/
     └── evaluate.py      # Evaluation script
 ```
 
+## Future Enhancements: Multimodal OCR Integration
+
+### Vision-Language Fusion with Pre-OCR'd Receipts
+
+This project currently uses only the vision encoder component of InternVL2. A powerful enhancement would be to leverage both vision and language components by incorporating OCR results from receipts.
+
+#### Proposed Architecture
+
+```
+┌─────────────┐          ┌──────────────┐
+│ Receipt     │          │ OCR Text     │
+│ Image       │          │ from Receipt │
+└──────┬──────┘          └──────┬───────┘
+       │                        │
+       ▼                        ▼
+┌──────────────┐       ┌───────────────┐
+│ InternVL     │       │ InternVL      │
+│ Vision       │       │ Language      │
+│ Encoder      │       │ Encoder       │
+└──────┬───────┘       └───────┬───────┘
+       │                       │
+       └───────────┬───────────┘
+                   │
+         ┌─────────▼─────────┐
+         │ Cross-Modal       │
+         │ Attention Layer   │
+         └─────────┬─────────┘
+                   │
+         ┌─────────▼─────────┐
+         │ Joint Multimodal  │
+         │ Representation    │
+         └─────────┬─────────┘
+                   │
+         ┌─────────▼─────────┐
+         │ Classification    │
+         │ Head              │
+         └─────────┬─────────┘
+                   │
+                   ▼
+              Receipt Count
+```
+
+#### Implementation Requirements
+
+1. **OCR Preprocessing Pipeline**
+   - Run OCR on receipt images to extract text
+   - Align OCR regions with image features
+   - Store OCR results alongside images
+
+2. **Model Modifications**
+   - Keep both vision and language components of InternVL2
+   - Implement cross-attention between modalities
+   - Design joint representation layer
+
+3. **Training Data Format**
+   - Image: Original receipt image
+   - Text: Corresponding OCR-extracted text
+   - Label: Receipt count (0, 1, 2+)
+
+#### Expected Benefits
+
+- **Enhanced Accuracy**: Combining visual patterns with textual content from receipts
+- **Better Disambiguation**: Distinguish receipts from similar-looking documents
+- **Improved Robustness**: Handle edge cases like partial occlusion
+- **Feature Richness**: Leverage both spatial and textual receipt indicators
+
+#### Technical Considerations
+
+- Memory usage will increase significantly (~2-3x)
+- Training time will be longer
+- Will require paired image-text data
+- Cross-attention implementation needs careful design
+
+This enhancement would transform the model from a pure vision classifier to a true multimodal system, fully leveraging InternVL2's vision-language capabilities.
+
 ## License
 
 MIT
