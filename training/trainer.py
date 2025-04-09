@@ -95,6 +95,20 @@ class InternVL2Trainer:
         
         # Setup mixed precision
         self.use_mixed_precision = config["training"].get("mixed_precision", False)
+        
+        # Check for FP16 parameters that might cause issues with GradScaler
+        has_fp16_params = False
+        for param in self.model.parameters():
+            if param.requires_grad and param.dtype == torch.float16:
+                has_fp16_params = True
+                break
+        
+        if has_fp16_params:
+            self.logger.warning("Model has FP16 parameters. Disabling gradient clipping to avoid unscaling errors.")
+            self.use_gradient_clip_with_mixed_precision = False
+        else:
+            self.use_gradient_clip_with_mixed_precision = True
+            
         if self.use_mixed_precision:
             try:
                 # Try the newer API (PyTorch 2.0+)
@@ -110,6 +124,11 @@ class InternVL2Trainer:
         # Setup training parameters
         self.epochs = config["training"]["epochs"]
         self.clip_grad_norm = config["training"]["optimizer"].get("gradient_clip", 1.0)
+        
+        # Override gradient clipping if model has fp16 parameters
+        if self.use_mixed_precision and not self.use_gradient_clip_with_mixed_precision:
+            self.logger.warning(f"Disabling gradient clipping (was set to {self.clip_grad_norm}) due to FP16 parameter detection")
+            self.clip_grad_norm = 0.0
         
         # Setup TensorBoard logger if enabled
         self.tensorboard = None
@@ -259,10 +278,16 @@ class InternVL2Trainer:
                 # Backward pass with gradient scaling
                 self.scaler.scale(loss).backward()
                 
-                # Gradient clipping
-                if self.clip_grad_norm > 0:
-                    self.scaler.unscale_(self.optimizer)
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad_norm)
+                # Gradient clipping (need to be careful with float16 parameters)
+                if self.clip_grad_norm > 0 and self.use_gradient_clip_with_mixed_precision:
+                    try:
+                        # Only attempt if we previously checked it's safe
+                        self.scaler.unscale_(self.optimizer)
+                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_grad_norm)
+                    except ValueError as e:
+                        # If we get an error, disable gradient clipping for future batches
+                        self.logger.warning(f"Error in gradient clipping: {e}. Disabling for future batches.")
+                        self.use_gradient_clip_with_mixed_precision = False
                 
                 # Update weights with gradient scaling
                 self.scaler.step(self.optimizer)
