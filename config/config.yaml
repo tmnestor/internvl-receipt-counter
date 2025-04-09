@@ -33,7 +33,7 @@ model:
 
 # Training configuration
 training:
-  epochs: 3  # Reduced for development/testing
+  epochs: 20
   early_stopping:
     patience: 2
     min_delta: 0.001
