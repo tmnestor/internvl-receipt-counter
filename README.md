@@ -191,9 +191,16 @@ Before running the application:
 For maximum training performance, this project supports several acceleration technologies:
 
 1. **Flash Attention 2**:
-   - Automatically used if installed (`pip install flash-attn>=2.5.0`)
+   - Automatically used if installed
    - Provides faster, memory-efficient attention computation
    - Enable with `flash_attention: true` in config.yaml
+   - Installation requires CUDA toolkit:
+     ```bash
+     # First ensure CUDA toolkit is properly set
+     export CUDA_HOME=/usr/local/cuda
+     # Then install
+     pip install flash-attn>=2.5.0
+     ```
 
 2. **Mixed Precision**:
    - Uses BFloat16 on supported GPUs (Ampere+) or Float16 otherwise
@@ -203,9 +210,16 @@ For maximum training performance, this project supports several acceleration tec
    - Dynamically optimizes PyTorch operations
    - Enable with `torch_compile: true` in config.yaml
    - Requires PyTorch 2.0+
+   - No additional installation needed
 
-4. **Distributed Training with DeepSpeed**:
+4. **xFormers**:
+   - Memory-efficient attention implementation
+   - Install with: `pip install xformers`
+   - No configuration needed, used automatically if available
+
+5. **Distributed Training with DeepSpeed**:
    - For multi-GPU setups
+   - Installation: `pip install deepspeed>=0.12.0`
    - Launch with: `deepspeed main.py --config config/config.yaml --mode train`
 
 ## Configuration

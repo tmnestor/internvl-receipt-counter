@@ -72,11 +72,12 @@ class InternVL2ReceiptClassifier(nn.Module):
             }
             
             # Enable Flash Attention if available and configured
-            if config["training"].get("flash_attention", False) and HAS_FLASH_ATTN:
-                self.logger.info("Using Flash Attention for faster training")
-                kwargs["attn_implementation"] = "flash_attention_2"
-            elif config["training"].get("flash_attention", False) and not HAS_FLASH_ATTN:
-                self.logger.warning("Flash Attention requested but not available. Install with: pip install flash-attn>=2.5.0")
+            if config["training"].get("flash_attention", False):
+                if HAS_FLASH_ATTN:
+                    self.logger.info("Using Flash Attention for faster training")
+                    kwargs["attn_implementation"] = "flash_attention_2"
+                else:
+                    self.logger.warning("Flash Attention requested but not available. Install with: CUDA_HOME=/usr/local/cuda pip install flash-attn>=2.5.0")
             
             # Set precision based on hardware
             if torch.cuda.is_available():
