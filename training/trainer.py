@@ -245,7 +245,8 @@ class InternVL2Trainer:
                 try:
                     # Try the newer API (PyTorch 2.0+)
                     device_type = 'cuda' if torch.cuda.is_available() else 'cpu'
-                    dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+                    # Always use float16 for mixed precision with grad scaler - bfloat16 not supported by _amp_foreach_non_finite_check_and_unscale_cuda
+                    dtype = torch.float16
                     with autocast(device_type=device_type, dtype=dtype):
                         outputs = self.model(images)
                         loss = self.loss_fn(outputs["logits"], targets)
@@ -341,7 +342,8 @@ class InternVL2Trainer:
                         try:
                             # Try the newer API (PyTorch 2.0+)
                             device_type = 'cuda' if torch.cuda.is_available() else 'cpu'
-                            dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+                            # Always use float16 for mixed precision with grad scaler - bfloat16 not supported by _amp_foreach_non_finite_check_and_unscale_cuda
+                            dtype = torch.float16
                             with autocast(device_type=device_type, dtype=dtype):
                                 outputs = self.model(images)
                                 loss = self.loss_fn(outputs["logits"], targets)

@@ -51,6 +51,7 @@ training:
     name: "cross_entropy"
     label_smoothing: 0.1
   mixed_precision: true
+  mixed_precision_dtype: "float16"  # Use "float16" for GradScaler compatibility
   # Acceleration options
   torch_compile: false  # Disable for now due to dtype compatibility issues
   compile_mode: "reduce-overhead"  # Options: "reduce-overhead", "max-autotune", or "default"
