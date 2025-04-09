@@ -191,8 +191,7 @@ Before running the application:
 For maximum training performance, this project supports several acceleration technologies:
 
 1. **Flash Attention 2**:
-   - Automatically used if installed
-   - Provides faster, memory-efficient attention computation
+   - Provides 2-3x faster attention computation with lower memory usage
    - Enable with `flash_attention: true` in config.yaml
    - Installation requires CUDA toolkit:
      ```bash
@@ -201,35 +200,52 @@ For maximum training performance, this project supports several acceleration tec
      # Then install
      pip install flash-attn>=2.5.0
      ```
+   - Automatically used if installed, falls back gracefully if not
 
-2. **Mixed Precision** (currently disabled due to compatibility issues):
-   - Note: Currently disabled by default due to FP16 gradient issues
-   - Uses Float16 for training 
-   - Enable at your own risk with `mixed_precision: true` in config.yaml
-   - May cause "Attempting to unscale FP16 gradients" errors with some model configurations
+2. **Mixed Precision Training**:
+   - Enables faster training with reduced memory usage
+   - Configure with `mixed_precision: true` in config.yaml
+   - Limitations:
+     - Incompatible with gradient clipping when using FP16 weights
+     - May cause "Attempting to unscale FP16 gradients" error
+     - Only reliable when weights are in float32 but activations use float16
+   - Recommended usage:
+     - Best for first stage of training (classifier only)
+     - Disable (`mixed_precision: false`) when fine-tuning full model
 
-3. **torch.compile**:
-   - Dynamically optimizes PyTorch operations
+3. **Gradient Accumulation**:
+   - Enables training with larger effective batch sizes
+   - Enable by setting `gradient_accumulation_steps: N` in config
+   - Useful when GPU memory is limited or batch size needs to be larger
+   - No additional installation required
+
+4. **torch.compile** (experimental):
+   - Provides 10-30% speedup by dynamically optimizing PyTorch code
    - Enable with `torch_compile: true` in config.yaml
-   - Configure mode with `compile_mode`: 
+   - Configure with `compile_mode`: 
      - "reduce-overhead": Best for large models (default)
      - "max-autotune": Maximum performance but slow startup
-     - "default": Balance of compilation speed and runtime
-   - Safety options:
-     - `compile_full_precision_only: true`: Prevents dtype issues with mixed precision
-   - Note: May cause errors with mixed precision in some model architectures
-   - Requires PyTorch 2.0+
-   - No additional installation needed
+   - Compatibility notes:
+     - Requires PyTorch 2.0+
+     - Only reliable with full precision training
+     - May crash with certain model architectures
+   - Not recommended for production use yet
 
-4. **xFormers**:
-   - Memory-efficient attention implementation
-   - Install with: `pip install xformers`
-   - No configuration needed, used automatically if available
+5. **Memory Optimization**:
+   - **xFormers**: Efficient attention implementation
+     - Install with: `pip install xformers`
+     - Used automatically if available
+   - **8-bit Quantization**:
+     - Enable with `use_8bit: true` in model config 
+     - Requires bitsandbytes package
+     - Reduces memory usage by ~50% during training
 
-5. **Distributed Training with DeepSpeed**:
-   - For multi-GPU setups
-   - Installation: `pip install deepspeed>=0.12.0`
-   - Launch with: `deepspeed main.py --config config/config.yaml --mode train`
+6. **Multi-GPU Training** (advanced):
+   - **DeepSpeed**: For multi-GPU setups
+     - Installation: `pip install deepspeed>=0.12.0`
+     - Launch with: `deepspeed main.py --config config/config.yaml --mode train`
+   - **DDP**: Native PyTorch distributed training
+     - Launch with: `torchrun --nproc_per_node=NUM_GPUS main.py --config config/config.yaml --mode train`
 
 ## Configuration
 
